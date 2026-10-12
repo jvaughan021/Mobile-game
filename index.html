@@ -16,7 +16,6 @@
       min-height: 100vh;
       margin: 0;
     }
-
     .container {
       text-align: center;
       background: #1e1e1e;
@@ -26,7 +25,6 @@
       max-width: 400px;
       width: 100%;
     }
-
     input {
       width: 90%;
       padding: 10px;
@@ -36,7 +34,6 @@
       background: #2a2a2a;
       color: #fff;
     }
-
     button {
       background-color: #635bff;
       color: white;
@@ -49,23 +46,12 @@
       width: 95%;
       font-weight: bold;
     }
-
-    button:hover {
-      background-color: #4b45c6;
-    }
-
-    .hidden {
-      display: none;
-    }
-
-    canvas {
-      border: 2px solid #635bff;
-      background: #000;
-      margin-top: 15px;
-    }
+    button:hover { background-color: #4b45c6; }
+    .hidden { display: none; }
+    canvas { border: 2px solid #635bff; background: #000; margin-top: 15px; }
   </style>
   
-  <!-- Supabase JS Client -->
+  <!-- Supabase JS Client via CDN -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -78,48 +64,49 @@
       <h3>Account Login</h3>
       <input type="email" id="email" placeholder="Email Address" />
       <input type="password" id="password" placeholder="Password" />
-      <button onclick="handleLogin()">Log In</button>
-      <button onclick="handleSignUp()" style="background-color: #333;">Sign Up</button>
+      <button type="button" onclick="handleLogin()">Log In</button>
+      <button type="button" onclick="handleSignUp()" style="background-color: #333;">Sign Up</button>
     </div>
 
-    <!-- PURCHASE SECTION (Visible after login if unpaid) -->
+    <!-- PURCHASE SECTION -->
     <div id="pay-section" class="hidden">
       <h3>Access Locked</h3>
       <p>You need to purchase access to play this game.</p>
-      <button onclick="handleBuyNow()">Buy Game Access</button>
-      <button onclick="handleLogout()" style="background-color: #333;">Log Out</button>
+      <button type="button" onclick="handleBuyNow()">Buy Game Access</button>
+      <button type="button" onclick="handleLogout()" style="background-color: #333;">Log Out</button>
     </div>
 
-    <!-- GAME SECTION (Visible only if paid) -->
+    <!-- GAME SECTION -->
     <div id="game-section" class="hidden">
       <h3>Welcome! Game Unlocked</h3>
       <canvas id="gameCanvas" width="320" height="240"></canvas>
       <br/><br/>
-      <button onclick="handleLogout()" style="background-color: #333;">Log Out</button>
+      <button type="button" onclick="handleLogout()" style="background-color: #333;">Log Out</button>
     </div>
   </div>
 
   <script>
-    // 1. SUPABASE CONFIGURATION
     const SUPABASE_URL = 'https://fvwthzdxrysvehbnfh.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ2d2ZoaXpkeHJ5c3ZlaGJycmZoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE3NTA5MzgsImV4cCI6MjEwNzMyNjkzOH0.mX_XvyGVYT06_t-tURbPMq-hN8f-GE5aetA8ODER9P8';
 
-    // Renamed local variable to avoid collision with the global window.supabase library
-    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    // Completely unique client reference name to prevent global overlap
+    const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    // 2. INITIALIZATION & SESSION CHECK
     window.onload = async () => {
-      const { data: { session } } = await supabaseClient.auth.getSession();
-      if (session) {
-        await checkAccess(session.user);
+      try {
+        const { data: { session } } = await db.auth.getSession();
+        if (session) {
+          await checkAccess(session.user);
+        }
+      } catch (e) {
+        console.error("Session load error:", e);
       }
     };
 
-    // 3. AUTHENTICATION FUNCTIONS
     async function handleSignUp() {
       const email = document.getElementById('email').value;
       const password = document.getElementById('password').value;
-      const { data, error } = await supabaseClient.auth.signUp({ email, password });
+      const { data, error } = await db.auth.signUp({ email, password });
       if (error) alert("Sign up error: " + error.message);
       else alert("Check your email for the confirmation link!");
     }
@@ -127,7 +114,7 @@
     async function handleLogin() {
       const email = document.getElementById('email').value;
       const password = document.getElementById('password').value;
-      const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+      const { data, error } = await db.auth.signInWithPassword({ email, password });
       if (error) {
         alert("Login error: " + error.message);
       } else {
@@ -136,36 +123,31 @@
     }
 
     async function handleLogout() {
-      await supabaseClient.auth.signOut();
+      await db.auth.signOut();
       location.reload();
     }
 
-    // 4. PERMISSION & ACCESS CHECK
     async function checkAccess(user) {
       document.getElementById('auth-section').classList.add('hidden');
 
-      // Query the database to verify if user has paid
-      const { data, error } = await supabaseClient
+      const { data, error } = await db
         .from('paid_users')
         .select('user_id')
         .eq('user_id', user.id)
         .single();
 
       if (data) {
-        // User has paid -> Show Game
         document.getElementById('pay-section').classList.add('hidden');
         document.getElementById('game-section').classList.remove('hidden');
         initGame();
       } else {
-        // User hasn't paid -> Show Buy Option
         document.getElementById('pay-section').classList.remove('hidden');
         document.getElementById('game-section').classList.add('hidden');
       }
     }
 
-    // 5. STRIPE CHECKOUT TRIGGER
     async function handleBuyNow() {
-      const { data: { user } } = await supabaseClient.auth.getUser();
+      const { data: { user } } = await db.auth.getUser();
       if (!user) {
         alert("Please log in first.");
         return;
@@ -184,7 +166,7 @@
         const resData = await response.json();
 
         if (resData.url) {
-          window.location.href = resData.url; // Redirect to Stripe
+          window.location.href = resData.url;
         } else {
           alert("Error creating payment session: " + (resData.error || "Unknown error"));
         }
@@ -193,7 +175,6 @@
       }
     }
 
-    // 6. GAME INITIALIZATION
     function initGame() {
       const canvas = document.getElementById('gameCanvas');
       const ctx = canvas.getContext('2d');
