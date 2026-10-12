@@ -1,163 +1,205 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Mobile Web Game</title>
-  <!-- Supabase JS Library -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>HTML5 Game - Premium</title>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
-      background: #111;
-      color: #fff;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      text-align: center;
-      min-height: 100vh;
+      font-family: Arial, sans-serif;
+      background-color: #121212;
+      color: #ffffff;
       display: flex;
       flex-direction: column;
-      justify-content: center;
       align-items: center;
-      touch-action: manipulation;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
     }
-    #auth-screen {
-      width: 90%;
-      max-width: 400px;
-      padding: 24px;
-      background: #222;
+
+    .container {
+      text-align: center;
+      background: #1e1e1e;
+      padding: 30px;
       border-radius: 12px;
       box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+      max-width: 400px;
+      width: 100%;
     }
-    h2 { margin-bottom: 12px; font-size: 22px; }
-    p { font-size: 14px; color: #ccc; margin-bottom: 16px; }
+
     input {
-      width: 100%;
-      padding: 12px;
-      font-size: 16px;
-      border-radius: 8px;
-      border: 1px solid #444;
-      background: #333;
+      width: 90%;
+      padding: 10px;
+      margin: 8px 0;
+      border-radius: 6px;
+      border: 1px solid #333;
+      background: #2a2a2a;
       color: #fff;
-      margin-bottom: 12px;
-      outline: none;
     }
+
     button {
-      width: 100%;
-      padding: 12px;
-      font-size: 16px;
-      font-weight: bold;
-      border-radius: 8px;
-      border: none;
-      background: #007bff;
+      background-color: #635bff;
       color: white;
+      border: none;
+      padding: 12px 20px;
+      margin-top: 10px;
+      font-size: 16px;
+      border-radius: 6px;
       cursor: pointer;
+      width: 95%;
+      font-weight: bold;
     }
-    #status-msg { margin-top: 12px; font-size: 14px; color: #ffca28; }
-    #game-container { display: none; width: 100%; text-align: center; }
+
+    button:hover {
+      background-color: #4b45c6;
+    }
+
+    .hidden {
+      display: none;
+    }
+
     canvas {
+      border: 2px solid #635bff;
       background: #000;
-      border: 2px solid #333;
-      touch-action: none;
+      margin-top: 15px;
     }
   </style>
+  
+  <!-- Supabase JS Client -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
-  <!-- 1. EMAIL GATEWAY SCREEN -->
-  <div id="auth-screen">
-    <h2>Enter Paid Email</h2>
-    <p>Please enter the email address you used at purchase to launch the game.</p>
-    <input type="email" id="email-input" placeholder="your-email@example.com">
-    <button onclick="sendMagicLink()">Send Access Link</button>
-    <p id="status-msg"></p>
-  </div>
+  <div class="container">
+    <h1>HTML5 Game</h1>
 
-  <!-- 2. GAME CANVAS CONTAINER -->
-  <div id="game-container">
-    <canvas id="gameCanvas" width="360" height="600"></canvas>
+    <!-- AUTH SECTION -->
+    <div id="auth-section">
+      <h3>Account Login</h3>
+      <input type="email" id="email" placeholder="Email Address" />
+      <input type="password" id="password" placeholder="Password" />
+      <button onclick="handleLogin()">Log In</button>
+      <button onclick="handleSignUp()" style="background-color: #333;">Sign Up</button>
+    </div>
+
+    <!-- PURCHASE SECTION (Visible after login if unpaid) -->
+    <div id="pay-section" class="hidden">
+      <h3>Access Locked</h3>
+      <p>You need to purchase access to play this game.</p>
+      <button onclick="handleBuyNow()">Buy Game Access</button>
+      <button onclick="handleLogout()" style="background-color: #333;">Log Out</button>
+    </div>
+
+    <!-- GAME SECTION (Visible only if paid) -->
+    <div id="game-section" class="hidden">
+      <h3>Welcome! Game Unlocked</h3>
+      <canvas id="gameCanvas" width="320" height="240"></canvas>
+      <br/><br/>
+      <button onclick="handleLogout()" style="background-color: #333;">Log Out</button>
+    </div>
   </div>
 
   <script>
-    // Configured Supabase Credentials
-    const SUPABASE_URL = 'https://fvwfhizdxrysvehbrrfh.supabase.co';
-    const SUPABASE_KEY = 'sb_publishable_oXbUCPWeOGjK4VyYiXDKxA_9FSAtQIt';
-    
-    // Initialize using a distinct variable name to avoid syntax crashes
-    const dbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    // 1. SUPABASE CONFIGURATION
+    const SUPABASE_URL = 'https://fvwthzdxrysvehbnfh.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ2d2ZoaXpkeHJ5c3ZlaGJycmZoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE3NTA5MzgsImV4cCI6MjEwNzMyNjkzOH0.mX_XvyGVYT06_t-tURbPMq-hN8f-GE5aetA8ODER9P8';
 
-    // Check if player is already logged in
-    async function checkSession() {
-      const { data: { session } } = await dbClient.auth.getSession();
+    const supabase = supabaseClient.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // 2. INITIALIZATION & SESSION CHECK
+    window.onload = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        unlockGame();
+        await checkAccess(session.user);
       }
+    };
+
+    // 3. AUTHENTICATION FUNCTIONS
+    async function handleSignUp() {
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      const { data, error } = await supabase.auth.signUp({ email, password });
+      if (error) alert("Sign up error: " + error.message);
+      else alert("Check your email for the confirmation link!");
     }
 
-    // Verify email against paid_users table and trigger magic link
-    async function sendMagicLink() {
-      const email = document.getElementById('email-input').value.trim();
-      const status = document.getElementById('status-msg');
-
-      if (!email) {
-        status.innerText = 'Please enter an email address.';
-        return;
-      }
-
-      status.innerText = 'Verifying purchase...';
-
-      // Query database to check if email exists in paid_users table
-      const { data, error } = await dbClient
-        .from('paid_users')
-        .select('email')
-        .eq('email', email)
-        .maybeSingle();
-
-      if (error || !data) {
-        status.innerText = 'Email not found in database! Please complete payment first.';
-        return;
-      }
-
-      // Email verified -> Send Magic Link
-      const { error: magicError } = await dbClient.auth.signInWithOtp({
-        email: email,
-        options: { emailRedirectTo: window.location.href }
-      });
-
-      if (magicError) {
-        status.innerText = 'Error: ' + magicError.message;
+    async function handleLogin() {
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        alert("Login error: " + error.message);
       } else {
-        status.innerText = 'Access link sent! Check your email inbox to log in and play.';
+        await checkAccess(data.user);
       }
     }
 
-    // Hide login form and start HTML5 Game
-    function unlockGame() {
-      document.getElementById('auth-screen').style.display = 'none';
-      document.getElementById('game-container').style.display = 'block';
-      initGame();
+    async function handleLogout() {
+      await supabase.auth.signOut();
+      location.reload();
     }
 
-    // Mobile HTML5 Game Loop
+    // 4. PERMISSION & ACCESS CHECK
+    async function checkAccess(user) {
+      document.getElementById('auth-section').classList.add('hidden');
+
+      // Query the database to verify if user has paid
+      const { data, error } = await supabase
+        .from('paid_users')
+        .select('user_id')
+        .eq('user_id', user.id)
+        .single();
+
+      if (data) {
+        // User has paid -> Show Game
+        document.getElementById('pay-section').classList.add('hidden');
+        document.getElementById('game-section').classList.remove('hidden');
+        initGame();
+      } else {
+        // User hasn't paid -> Show Buy Option
+        document.getElementById('pay-section').classList.remove('hidden');
+        document.getElementById('game-section').classList.add('hidden');
+      }
+    }
+
+    // 5. STRIPE CHECKOUT TRIGGER
+    async function handleBuyNow() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        alert("Please log in first.");
+        return;
+      }
+
+      try {
+        const response = await fetch(`${SUPABASE_URL}/functions/v1/create-checkout-session`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${SUPABASE_ANON_KEY}`
+          },
+          body: JSON.stringify({ userId: user.id })
+        });
+
+        const resData = await response.json();
+
+        if (resData.url) {
+          window.location.href = resData.url; // Redirect to Stripe
+        } else {
+          alert("Error creating payment session: " + (resData.error || "Unknown error"));
+        }
+      } catch (err) {
+        console.error("Checkout Request Error:", err);
+      }
+    }
+
+    // 6. GAME INITIALIZATION
     function initGame() {
       const canvas = document.getElementById('gameCanvas');
       const ctx = canvas.getContext('2d');
-
-      function draw() {
-        ctx.fillStyle = '#000000';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        ctx.fillStyle = '#00ff88';
-        ctx.font = '20px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('Game Unlocked!', canvas.width / 2, canvas.height / 2);
-
-        requestAnimationFrame(draw);
-      }
-      draw();
+      ctx.fillStyle = '#00ff88';
+      ctx.font = '20px Arial';
+      ctx.fillText('Game Running!', 90, 125);
     }
-
-    // Execute session check on page load
-    checkSession();
   </script>
 </body>
 </html>
