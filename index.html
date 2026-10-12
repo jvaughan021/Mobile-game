@@ -64,16 +64,16 @@
       <h3>Account Login</h3>
       <input type="email" id="email" placeholder="Email Address" />
       <input type="password" id="password" placeholder="Password" />
-      <button type="button" onclick="handleLogin()">Log In</button>
-      <button type="button" onclick="handleSignUp()" style="background-color: #333;">Sign Up</button>
+      <button type="button" id="login-btn">Log In</button>
+      <button type="button" id="signup-btn" style="background-color: #333;">Sign Up</button>
     </div>
 
     <!-- PURCHASE SECTION -->
     <div id="pay-section" class="hidden">
       <h3>Access Locked</h3>
       <p>You need to purchase access to play this game.</p>
-      <button type="button" onclick="handleBuyNow()">Buy Game Access</button>
-      <button type="button" onclick="handleLogout()" style="background-color: #333;">Log Out</button>
+      <button type="button" id="buy-btn">Buy Game Access</button>
+      <button type="button" id="logout-btn-1" style="background-color: #333;">Log Out</button>
     </div>
 
     <!-- GAME SECTION -->
@@ -81,17 +81,23 @@
       <h3>Welcome! Game Unlocked</h3>
       <canvas id="gameCanvas" width="320" height="240"></canvas>
       <br/><br/>
-      <button type="button" onclick="handleLogout()" style="background-color: #333;">Log Out</button>
+      <button type="button" id="logout-btn-2" style="background-color: #333;">Log Out</button>
     </div>
   </div>
 
   <script>
-    const SUPABASE_URL = 'https://fvwthzdxrysvehbnfh.supabase.co';
+    const SUPABASE_URL = 'https://fvwthizdxrysvehbrrfh.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ2d2ZoaXpkeHJ5c3ZlaGJycmZoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE3NTA5MzgsImV4cCI6MjEwNzMyNjkzOH0.mX_XvyGVYT06_t-tURbPMq-hN8f-GE5aetA8ODER9P8';
 
     const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    window.onload = async () => {
+    document.addEventListener('DOMContentLoaded', async () => {
+      document.getElementById('login-btn').addEventListener('click', handleLogin);
+      document.getElementById('signup-btn').addEventListener('click', handleSignUp);
+      document.getElementById('buy-btn').addEventListener('click', handleBuyNow);
+      document.getElementById('logout-btn-1').addEventListener('click', handleLogout);
+      document.getElementById('logout-btn-2').addEventListener('click', handleLogout);
+
       try {
         const { data: { session } } = await db.auth.getSession();
         if (session) {
@@ -100,7 +106,7 @@
       } catch (e) {
         console.error("Session load error:", e);
       }
-    };
+    });
 
     async function handleSignUp() {
       const email = document.getElementById('email').value;
@@ -129,16 +135,11 @@
     async function checkAccess(user) {
       document.getElementById('auth-section').classList.add('hidden');
 
-      // Use maybeSingle() instead of single() to safely handle users who haven't paid yet
       const { data, error } = await db
         .from('paid_users')
         .select('user_id')
         .eq('user_id', user.id)
-        .maybeSingle();
-
-      if (error) {
-        console.error("Database query error:", error.message);
-      }
+        .single();
 
       if (data) {
         document.getElementById('pay-section').classList.add('hidden');
@@ -151,9 +152,8 @@
     }
 
     async function handleBuyNow() {
-      // Get the current session to pass the user's secure token
-      const { data: { session } } = await db.auth.getSession();
-      if (!session) {
+      const { data: { user } } = await db.auth.getUser();
+      if (!user) {
         alert("Please log in first.");
         return;
       }
@@ -163,9 +163,9 @@
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${session.access_token}` // Fixed to use the user's JWT
+            "Authorization": `Bearer ${SUPABASE_ANON_KEY}`
           },
-          body: JSON.stringify({ userId: session.user.id })
+          body: JSON.stringify({ userId: user.id })
         });
 
         const resData = await response.json();
