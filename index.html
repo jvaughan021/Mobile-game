@@ -3,12 +3,21 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>HTML5 Game - Premium</title>
+  <title>HTML5 Game - Premium Edition</title>
   <style>
+    :root {
+      --bg-color: #121212;
+      --card-bg: #1e1e1e;
+      --accent: #635bff;
+      --accent-hover: #4b45c6;
+      --text: #ffffff;
+      --text-muted: #aaaaaa;
+    }
+
     body {
-      font-family: Arial, sans-serif;
-      background-color: #121212;
-      color: #ffffff;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text);
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -16,149 +25,252 @@
       min-height: 100vh;
       margin: 0;
     }
+
     .container {
       text-align: center;
-      background: #1e1e1e;
-      padding: 30px;
-      border-radius: 12px;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.5);
-      max-width: 400px;
+      background: var(--card-bg);
+      padding: 35px;
+      border-radius: 14px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+      max-width: 380px;
       width: 100%;
     }
+
+    h1, h3 { margin-top: 0; }
+    p { color: var(--text-muted); font-size: 14px; }
+
     input {
-      width: 90%;
-      padding: 10px;
+      width: 100%;
+      box-sizing: border-box;
+      padding: 12px;
       margin: 8px 0;
-      border-radius: 6px;
+      border-radius: 8px;
       border: 1px solid #333;
       background: #2a2a2a;
       color: #fff;
+      font-size: 14px;
     }
+
+    input:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
     button {
-      background-color: #635bff;
+      background-color: var(--accent);
       color: white;
       border: none;
       padding: 12px 20px;
       margin-top: 10px;
-      font-size: 16px;
-      border-radius: 6px;
+      font-size: 15px;
+      border-radius: 8px;
       cursor: pointer;
-      width: 95%;
+      width: 100%;
       font-weight: bold;
+      transition: background 0.2s;
     }
-    button:hover { background-color: #4b45c6; }
-    .hidden { display: none; }
-    canvas { border: 2px solid #635bff; background: #000; margin-top: 15px; }
+
+    button:hover { background-color: var(--accent-hover); }
+    
+    .btn-secondary { background-color: #333; }
+    .btn-secondary:hover { background-color: #444; }
+
+    .hidden { display: none !important; }
+
+    canvas {
+      border: 2px solid var(--accent);
+      background: #000;
+      margin-top: 15px;
+      border-radius: 6px;
+    }
+
+    #status-message {
+      font-size: 13px;
+      margin-top: 10px;
+      color: #00ff88;
+    }
   </style>
-  
-  <!-- Supabase JS Client via CDN -->
+
+  <!-- Supabase JS Client CDN -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
   <div class="container">
     <h1>HTML5 Game</h1>
+    <div id="status-message"></div>
 
-    <!-- AUTH SECTION -->
-    <div id="auth-section">
-      <h3>Account Login</h3>
-      <input type="email" id="email" placeholder="Email Address" />
-      <input type="password" id="password" placeholder="Password" />
-      <button type="button" id="login-btn">Log In</button>
-      <button type="button" id="signup-btn" style="background-color: #333;">Sign Up</button>
+    <!-- VIEW 1: AUTHENTICATION -->
+    <div id="view-auth">
+      <h3>Welcome Back</h3>
+      <input type="email" id="email-input" placeholder="Email Address" />
+      <input type="password" id="password-input" placeholder="Password" />
+      <button id="login-btn">Log In</button>
+      <button id="signup-btn" class="btn-secondary">Create Account</button>
     </div>
 
-    <!-- PURCHASE SECTION -->
-    <div id="pay-section" class="hidden">
+    <!-- VIEW 2: PAYWALL / ACCESS LOCKED -->
+    <div id="view-paywall" class="hidden">
       <h3>Access Locked</h3>
-      <p>You need to purchase access to play this game.</p>
-      <button type="button" id="buy-btn">Buy Game Access</button>
-      <button type="button" id="logout-btn-1" style="background-color: #333;">Log Out</button>
+      <p>Unlock the full game experience with a single purchase.</p>
+      <button id="buy-btn">Buy Game Access ($5)</button>
+      <button id="logout-btn-1" class="btn-secondary">Log Out</button>
     </div>
 
-    <!-- GAME SECTION -->
-    <div id="game-section" class="hidden">
-      <h3>Welcome! Game Unlocked</h3>
-      <canvas id="gameCanvas" width="320" height="240"></canvas>
-      <br/><br/>
-      <button type="button" id="logout-btn-2" style="background-color: #333;">Log Out</button>
+    <!-- VIEW 3: GAME UNLOCKED -->
+    <div id="view-game" class="hidden">
+      <h3>Game Unlocked!</h3>
+      <canvas id="gameCanvas" width="300" height="200"></canvas>
+      <button id="logout-btn-2" class="btn-secondary">Log Out</button>
     </div>
   </div>
 
   <script>
-    const SUPABASE_URL = 'https://fvwthizdxrysvehbrrfh.supabase.co';
+    // Configuration Constants
+    const SUPABASE_URL = 'https://fvwthzdxrysvehbrrfh.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ2d2ZoaXpkeHJ5c3ZlaGJycmZoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE3NTA5MzgsImV4cCI6MjEwNzMyNjkzOH0.mX_XvyGVYT06_t-tURbPMq-hN8f-GE5aetA8ODER9P8';
 
+    // Initialize Supabase Client safely
     const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+    // DOM Elements Cache
+    const views = {
+      auth: document.getElementById('view-auth'),
+      paywall: document.getElementById('view-paywall'),
+      game: document.getElementById('view-game')
+    };
+    const statusMsg = document.getElementById('status-message');
+
+    function switchView(viewName) {
+      Object.keys(views).forEach(key => {
+        if (key === viewName) {
+          views[key].classList.remove('hidden');
+        } else {
+          views[key].classList.add('hidden');
+        }
+      });
+    }
+
+    function showStatus(text, isError = false) {
+      statusMsg.style.color = isError ? '#ff4d4d' : '#00ff88';
+      statusMsg.textContent = text;
+      setTimeout(() => { statusMsg.textContent = ''; }, 5000);
+    }
+
+    // App Initialization on Page Load
     document.addEventListener('DOMContentLoaded', async () => {
+      // Bind button events cleanly
       document.getElementById('login-btn').addEventListener('click', handleLogin);
       document.getElementById('signup-btn').addEventListener('click', handleSignUp);
       document.getElementById('buy-btn').addEventListener('click', handleBuyNow);
       document.getElementById('logout-btn-1').addEventListener('click', handleLogout);
       document.getElementById('logout-btn-2').addEventListener('click', handleLogout);
 
+      // Check if redirected back from a successful Stripe purchase
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('success') === 'true') {
+        showStatus('Payment successful! Verifying your access...');
+        // Clean URL parameter
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+
+      // Check active user session
       try {
-        const { data: { session } } = await db.auth.getSession();
+        const { data: { session }, error } = await db.auth.getSession();
+        if (error) throw error;
+
         if (session) {
-          await checkAccess(session.user);
+          await verifyUserAccess(session.user);
+        } else {
+          switchView('auth');
         }
-      } catch (e) {
-        console.error("Session load error:", e);
+      } catch (err) {
+        console.error("Initialization error:", err.message);
+        switchView('auth');
       }
     });
 
+    // Authentication Handlers
     async function handleSignUp() {
-      const email = document.getElementById('email').value;
-      const password = document.getElementById('password').value;
+      const email = document.getElementById('email-input').value.trim();
+      const password = document.getElementById('password-input').value;
+
+      if (!email || !password) {
+        showStatus('Please enter email and password.', true);
+        return;
+      }
+
       const { data, error } = await db.auth.signUp({ email, password });
-      if (error) alert("Sign up error: " + error.message);
-      else alert("Check your email for the confirmation link!");
+      if (error) {
+        showStatus(error.message, true);
+      } else {
+        showStatus('Account created! Check your email or log in.');
+      }
     }
 
     async function handleLogin() {
-      const email = document.getElementById('email').value;
-      const password = document.getElementById('password').value;
+      const email = document.getElementById('email-input').value.trim();
+      const password = document.getElementById('password-input').value;
+
+      if (!email || !password) {
+        showStatus('Please enter email and password.', true);
+        return;
+      }
+
       const { data, error } = await db.auth.signInWithPassword({ email, password });
       if (error) {
-        alert("Login error: " + error.message);
+        showStatus(error.message, true);
       } else {
-        await checkAccess(data.user);
+        await verifyUserAccess(data.user);
       }
     }
 
     async function handleLogout() {
       await db.auth.signOut();
-      location.reload();
+      switchView('auth');
+      showStatus('Logged out successfully.');
     }
 
-    async function checkAccess(user) {
-      document.getElementById('auth-section').classList.add('hidden');
+    // Database Permission Check
+    async function verifyUserAccess(user) {
+      showStatus('Checking access permissions...');
 
+      // Query paid_users table. maybeSingle() prevents crashes if 0 rows return.
       const { data, error } = await db
         .from('paid_users')
         .select('user_id')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
-      if (data) {
-        document.getElementById('pay-section').classList.add('hidden');
-        document.getElementById('game-section').classList.remove('hidden');
-        initGame();
-      } else {
-        document.getElementById('pay-section').classList.remove('hidden');
-        document.getElementById('game-section').classList.add('hidden');
-      }
-    }
-
-    async function handleBuyNow() {
-      const { data: { user } } = await db.auth.getUser();
-      if (!user) {
-        alert("Please log in first.");
+      if (error) {
+        console.error("Database check error:", error.message);
+        showStatus('Error verifying access rights.', true);
+        switchView('paywall');
         return;
       }
 
+      if (data) {
+        // User has paid -> Unlock Game
+        switchView('game');
+        startCanvasGame();
+      } else {
+        // User has not paid -> Show Paywall
+        switchView('paywall');
+      }
+    }
+
+    // Stripe Checkout Integration
+    async function handleBuyNow() {
       try {
+        const { data: { user } } = await db.auth.getUser();
+        if (!user) {
+          showStatus('Please log in first.', true);
+          switchView('auth');
+          return;
+        }
+
+        showStatus('Preparing secure checkout...');
+
         const response = await fetch(`${SUPABASE_URL}/functions/v1/create-checkout-session`, {
           method: "POST",
           headers: {
@@ -171,21 +283,45 @@
         const resData = await response.json();
 
         if (resData.url) {
-          window.location.href = resData.url;
+          window.location.href = resData.url; // Redirect to Stripe
         } else {
-          alert("Error creating payment session: " + (resData.error || "Unknown error"));
+          showStatus(resData.error || 'Failed to create checkout session.', true);
         }
       } catch (err) {
-        console.error("Checkout Request Error:", err);
+        console.error("Checkout request failed:", err);
+        showStatus('Network error connecting to payment gateway.', true);
       }
     }
 
-    function initGame() {
+    // Simple Canvas Game Loop
+    function startCanvasGame() {
       const canvas = document.getElementById('gameCanvas');
       const ctx = canvas.getContext('2d');
-      ctx.fillStyle = '#00ff88';
-      ctx.font = '20px Arial';
-      ctx.fillText('Game Running!', 90, 125);
+      
+      let x = 50;
+      let y = 100;
+      let dx = 2;
+
+      function draw() {
+        ctx.fillStyle = '#111';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Draw a simple moving object
+        ctx.fillStyle = '#00ff88';
+        ctx.beginPath();
+        ctx.arc(x, y, 15, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#fff';
+        ctx.font = '14px sans-serif';
+        ctx.fillText('Game Running!', 100, 30);
+
+        x += dx;
+        if (x > canvas.width - 15 || x < 15) dx = -dx;
+
+        requestAnimationFrame(draw);
+      }
+      draw();
     }
   </script>
 </body>
