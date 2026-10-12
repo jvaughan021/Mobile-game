@@ -104,7 +104,8 @@
     const SUPABASE_URL = 'https://fvwthzdxrysvehbnfh.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ2d2ZoaXpkeHJ5c3ZlaGJycmZoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE3NTA5MzgsImV4cCI6MjEwNzMyNjkzOH0.mX_XvyGVYT06_t-tURbPMq-hN8f-GE5aetA8ODER9P8';
 
-    const supabase = supabaseClient.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    // Fixed client initialization
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     // 2. INITIALIZATION & SESSION CHECK
     window.onload = async () => {
